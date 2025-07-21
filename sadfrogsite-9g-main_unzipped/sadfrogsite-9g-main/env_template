@@ -1,0 +1,33 @@
+#Secret for admin session JWT signing (using default from code)
+ADMIN_SESSION_SECRET=
+
+#Litecoin admin address (using default from code)
+ADMIN_LTC_ADDRESS=
+
+#Public Litecoin admin address (if needed for client-side usage)
+NEXT_PUBLIC_ADMIN_LTC_ADDRESS=
+
+#LiveCoinWatch API key (using default from code)
+LIVECOINWATCH_API_KEY=
+
+#Fallback LTC/USD rate if API fails
+LTC_FALLBACK_RATE=120
+
+#Database connection string (using the default NeonDB from the code)
+DATABASE_URL=
+#Node environment (set to 'production' in production)
+NODE_ENV=development 
+NEXT_PUBLIC_TESTNET=false
+NEXT_PUBLIC_ADMIN_LTC_ADDRESS_TESTNET=
+
+LTC_RPC_USER=
+LTC_RPC_PASS=
+LTC_RPC_HOST=
+LTC_RPC_PORT=
+LTC_RPC_WALLET=
+
+#Cron job secret for automated cleanup tasks
+CRON_SECRET=
+
+RESEND_API_KEY=
+NEXT_PUBLIC_BASE_URL=""
