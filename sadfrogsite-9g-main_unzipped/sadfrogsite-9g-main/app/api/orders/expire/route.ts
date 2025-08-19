@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/neon"
+import { getOrderById } from "@/lib/data"
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +19,31 @@ export async function POST(request: NextRequest) {
 
     if (result.count === 0) {
       return NextResponse.json({ error: "Order not found or already processed" }, { status: 404 })
+    }
+
+    // Restock items on expiration
+    try {
+      const order = await getOrderById(orderId)
+      if (order) {
+        for (const item of order.items) {
+          await sql`
+            UPDATE products
+            SET stock_limit = CASE 
+              WHEN stock_limit IS NULL THEN NULL
+              ELSE stock_limit + ${item.quantity}
+            END,
+            stock_status = CASE 
+              WHEN stock_limit IS NULL THEN stock_status
+              WHEN stock_limit + ${item.quantity} > 0 THEN 'in-stock'
+              ELSE stock_status
+            END,
+            updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${item.id}
+          `
+        }
+      }
+    } catch (stockError) {
+      console.error("[API] Failed to restock items on order expiration:", stockError)
     }
 
     return NextResponse.json({ success: true, message: "Order expired successfully" })

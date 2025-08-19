@@ -82,6 +82,24 @@ export async function initializeDatabase(wipeData = false) {
       )
     `
 
+    // Create product_images table for storing binary images (tolerate rare race on first creation)
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS product_images (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          data BYTEA NOT NULL,
+          mime_type TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `
+    } catch (error: any) {
+      if (error && (error.code === '23505' || String(error.message || '').includes('pg_type_typname_nsp_index'))) {
+        console.warn('[DB] product_images table creation raced; ignoring duplicate type/table error')
+      } else {
+        throw error
+      }
+    }
+
     // Create admin_sessions table
     await sql`
       CREATE TABLE IF NOT EXISTS admin_sessions (
@@ -125,6 +143,8 @@ export async function initializeDatabase(wipeData = false) {
     await addStockLimitColumn()
     await addFeaturedColumn()
     await addTotalLtcColumn()
+    await addImageUrlsColumn()
+    await addVariantsColumn()
 
     // Create indexes for better performance
     await sql`CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)`
@@ -232,6 +252,32 @@ export async function addTotalLtcColumn() {
     console.log("[DB] 'total_ltc' column ensured to exist in 'orders' table.");
   } catch (error) {
     console.error("[DB] Error ensuring 'total_ltc' column exists:", error);
+  }
+}
+
+export async function addImageUrlsColumn() {
+  try {
+    console.log("[DB] Checking for image_urls column in products table...")
+    await sql`
+      ALTER TABLE products
+      ADD COLUMN IF NOT EXISTS image_urls JSONB DEFAULT '[]'::jsonb
+    `
+    console.log("[DB] 'image_urls' column ensured to exist in 'products' table.")
+  } catch (error) {
+    console.error("[DB] Error ensuring 'image_urls' column exists:", error)
+  }
+}
+
+export async function addVariantsColumn() {
+  try {
+    console.log("[DB] Checking for variants column in products table...")
+    await sql`
+      ALTER TABLE products
+      ADD COLUMN IF NOT EXISTS variants JSONB DEFAULT '[]'::jsonb
+    `
+    console.log("[DB] 'variants' column ensured to exist in 'products' table.")
+  } catch (error) {
+    console.error("[DB] Error ensuring 'variants' column exists:", error)
   }
 }
 

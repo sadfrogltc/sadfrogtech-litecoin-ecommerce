@@ -80,6 +80,7 @@ export async function createOrderAction(formData: FormData) {
 
     revalidatePath("/")
     revalidatePath("/admin")
+    revalidatePath("/catalog")
 
     return {
       success: true,

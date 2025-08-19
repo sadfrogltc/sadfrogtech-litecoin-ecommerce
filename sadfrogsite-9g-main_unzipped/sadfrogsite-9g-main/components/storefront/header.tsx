@@ -56,19 +56,25 @@ export function Header() {
                 <DialogHeader className="w-full items-center">
                   <DialogTitle className="text-2xl text-center mb-1">SadFrog Ordinals</DialogTitle>
                   <DialogDescription className="text-center mb-4">
-                    Explore our exclusive SadFrog Ordinals collections on these platforms.
+                    SadFrog Ordinals collections are coming soon.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="w-full border-t border-gray-200 my-2" />
                 <div className="flex flex-col gap-4 w-full mt-2">
-                  <a href="https://example.com/collection1" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 shadow-sm transition-colors">
+                  <div aria-disabled="true" className="flex items-center gap-4 bg-white border border-blue-200 rounded-lg px-4 py-3 shadow-sm opacity-50 cursor-not-allowed">
                     <Image src="/sadfrog-logo.png" alt="Sad Frog" width={40} height={40} className="rounded-full border" />
-                    <span className="font-semibold text-blue-700 text-lg">Sad Frog</span>
-                  </a>
-                  <a href="https://example.com/collection2" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white hover:bg-green-50 border border-green-200 rounded-lg px-4 py-3 shadow-sm transition-colors">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-blue-700 text-lg">Sad Frog</span>
+                      <span className="text-xs text-muted-foreground">Coming soon</span>
+                    </div>
+                  </div>
+                  <div aria-disabled="true" className="flex items-center gap-4 bg-white border border-green-200 rounded-lg px-4 py-3 shadow-sm opacity-50 cursor-not-allowed">
                     <Image src="https://ord.chikun.market/content/34e038e8f37e5ade2fde16bf9f09fda2a59a270d8c984cbd27e6354b6d9ee80bi0" alt="SadFrogPFP - Wave II" width={40} height={40} className="rounded-full border" />
-                    <span className="font-semibold text-green-700 text-lg">SadFrogPFP - Wave II</span>
-                  </a>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-green-700 text-lg">SadFrogPFP - Wave II</span>
+                      <span className="text-xs text-muted-foreground">Coming soon</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </DialogContent>
@@ -172,19 +178,25 @@ export function Header() {
                       <DialogHeader className="w-full items-center">
                         <DialogTitle className="text-2xl text-center mb-1">SadFrog Ordinals</DialogTitle>
                         <DialogDescription className="text-center mb-4">
-                          Explore our exclusive SadFrog Ordinals collections on these platforms.
+                          SadFrog Ordinals collections are coming soon.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="w-full border-t border-gray-200 my-2" />
                       <div className="flex flex-col gap-4 w-full mt-2">
-                        <a href="https://example.com/collection1" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 shadow-sm transition-colors">
+                        <div aria-disabled="true" className="flex items-center gap-4 bg-white border border-blue-200 rounded-lg px-4 py-3 shadow-sm opacity-50 cursor-not-allowed">
                           <Image src="/sadfrog-logo.png" alt="Sad Frog" width={40} height={40} className="rounded-full border" />
-                          <span className="font-semibold text-blue-700 text-lg">Sad Frog</span>
-                        </a>
-                        <a href="https://example.com/collection2" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white hover:bg-green-50 border border-green-200 rounded-lg px-4 py-3 shadow-sm transition-colors">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-blue-700 text-lg">Sad Frog</span>
+                            <span className="text-xs text-muted-foreground">Coming soon</span>
+                          </div>
+                        </div>
+                        <div aria-disabled="true" className="flex items-center gap-4 bg-white border border-green-200 rounded-lg px-4 py-3 shadow-sm opacity-50 cursor-not-allowed">
                           <Image src="https://ord.chikun.market/content/34e038e8f37e5ade2fde16bf9f09fda2a59a270d8c984cbd27e6354b6d9ee80bi0" alt="SadFrogPFP - Wave II" width={40} height={40} className="rounded-full border" />
-                          <span className="font-semibold text-green-700 text-lg">SadFrogPFP - Wave II</span>
-                        </a>
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-green-700 text-lg">SadFrogPFP - Wave II</span>
+                            <span className="text-xs text-muted-foreground">Coming soon</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </DialogContent>

@@ -14,6 +14,7 @@ import { saveProductAction } from "./actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { ImageUpload } from "@/components/admin/image-upload" // Add this import
+import { ImageUploadMulti } from "@/components/admin/image-upload-multi"
 
 const productSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters."),
@@ -23,6 +24,8 @@ const productSchema = z.object({
   category: z.string().min(3, "Category is required."),
   stockStatus: z.enum(["in-stock", "out-of-stock"]),
   imageUrl: z.string().url("Must be a valid URL.").or(z.literal("")).or(z.string().startsWith("/")),
+  // Accept a JSON string for multiple images in the form layer
+  imageUrls: z.string().optional(),
   stockLimit: z.coerce.number().int().positive("Stock limit must be a positive integer.").optional().or(z.literal("")).transform(val => val === "" ? undefined : val),
   featured: z.union([z.boolean(), z.string()]).transform(val => {
     if (typeof val === "boolean") return val;
@@ -30,6 +33,7 @@ const productSchema = z.object({
     if (val === "false") return false;
     return false;
   }).optional().default(false),
+  variants: z.string().optional(),
 })
 
 type ProductFormData = z.infer<typeof productSchema>
@@ -62,6 +66,8 @@ export function ProductForm({ product }: ProductFormProps) {
       category: product?.category || "",
       stockStatus: product?.stockStatus || "in-stock",
       imageUrl: product?.imageUrl || "/placeholder.svg?height=500&width=500",
+      imageUrls: product?.imageUrls ? JSON.stringify(product.imageUrls) : "",
+      variants: product?.variants ? JSON.stringify(product.variants) : "",
       stockLimit: product?.stockLimit ?? "",
       featured: product?.featured ?? false,
     },
@@ -230,6 +236,79 @@ export function ProductForm({ product }: ProductFormProps) {
                   <FormLabel>Product Image</FormLabel>
                   <FormControl>
                     <ImageUpload value={field.value} onChange={(url) => field.onChange(url)} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="imageUrls"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Additional Images</FormLabel>
+                  <FormControl>
+                    <ImageUploadMulti
+                      values={(() => { try { return JSON.parse(field.value || "[]") } catch { return [] } })()}
+                      onChange={(urls) => field.onChange(JSON.stringify(urls))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Variants Editor */}
+            <FormField
+              control={form.control}
+              name="variants"
+              render={({ field }) => {
+                const parsed = (() => { try { return JSON.parse(field.value || "[]") } catch { return [] } })() as Array<{ id: string; name: string; imageUrls: string[] }>
+                const setParsed = (next: Array<{ id: string; name: string; imageUrls: string[] }>) => field.onChange(JSON.stringify(next))
+                const upsert = (idx: number, patch: Partial<{ name: string; imageUrls: string[] }>) => {
+                  const next = [...parsed]
+                  next[idx] = { ...next[idx], ...patch }
+                  setParsed(next)
+                }
+                const addVariant = () => setParsed([...(parsed || []), { id: Math.random().toString(36).slice(2,8), name: "", imageUrls: [] }])
+                const removeVariant = (idx: number) => setParsed(parsed.filter((_, i) => i !== idx))
+                return (
+                  <FormItem>
+                    <FormLabel>Variants (e.g., Colors)</FormLabel>
+                    <FormControl>
+                      <div className="space-y-4">
+                        <Button type="button" variant="outline" onClick={addVariant}>Add Variant</Button>
+                        {parsed.map((v, idx) => (
+                          <div key={v.id} className="border rounded p-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                placeholder="Variant name (e.g., Red)"
+                                value={v.name}
+                                onChange={(e) => upsert(idx, { name: e.target.value })}
+                              />
+                              <Button type="button" variant="destructive" onClick={() => removeVariant(idx)}>Remove</Button>
+                            </div>
+                            <ImageUploadMulti
+                              values={v.imageUrls || []}
+                              onChange={(urls) => upsert(idx, { imageUrls: urls })}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
+            />
+            <FormField
+              control={form.control}
+              name="imageUrls"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Additional Images (JSON array of URLs)</FormLabel>
+                  <FormControl>
+                    <Textarea rows={4} placeholder='["https://example.com/img1.jpg", "https://example.com/img2.jpg"]' {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

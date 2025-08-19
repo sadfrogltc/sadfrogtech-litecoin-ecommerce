@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Product } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useLtcPrice } from "@/hooks/use-ltc-price"
 import { useCart } from "@/hooks/use-cart"
@@ -21,13 +22,18 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
   const { addItem, items } = useCart()
   const { ltcPrice, isLoading } = useLtcPrice()
   const [quantity, setQuantity] = useState(1)
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null)
 
   if (!product) return null
 
   const handleAddToCart = () => {
     // Add the specified quantity to cart
+    const selectedVariant = selectedVariantIndex != null && product.variants ? product.variants[selectedVariantIndex] : undefined
+    const productForCart = selectedVariant
+      ? { ...product, title: `${product.title} (${selectedVariant.name})` } // reflect variant in title
+      : product
     for (let i = 0; i < quantity; i++) {
-      addItem(product)
+      addItem(productForCart)
     }
     toast.success(`${quantity} ${quantity === 1 ? 'item' : 'items'} added to cart`)
     onClose()
@@ -39,8 +45,12 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
 
   const cartItem = items.find((item) => item.id === product.id)
   const currentQty = cartItem ? cartItem.quantity : 0
-  const availableStock = typeof product.stockLimit === 'number' ? product.stockLimit - currentQty : undefined
-  const isOutOfStock = product.stockStatus !== 'in-stock' || (typeof product.stockLimit === 'number' && availableStock <= 0)
+  const variantStockLimit = (selectedVariantIndex != null && product.variants && product.variants[selectedVariantIndex]?.stockLimit) || undefined
+  const baseStockLimit = product.stockLimit
+  const effectiveStockLimit = typeof variantStockLimit === 'number' ? variantStockLimit : baseStockLimit
+  const availableStock = typeof effectiveStockLimit === 'number' ? effectiveStockLimit - currentQty : undefined
+  const variantStockStatus = (selectedVariantIndex != null && product.variants && product.variants[selectedVariantIndex]?.stockStatus) || undefined
+  const isOutOfStock = (variantStockStatus ? variantStockStatus !== 'in-stock' : product.stockStatus !== 'in-stock') || (typeof effectiveStockLimit === 'number' && availableStock <= 0)
   const isLowStock = typeof availableStock === 'number' && availableStock > 0 && availableStock <= 5
   const maxQuantity = typeof availableStock === 'number' ? availableStock : 99
 
@@ -56,6 +66,14 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
     }
   }
 
+  const galleryImages = useMemo(() => {
+    if (selectedVariantIndex != null && product.variants && product.variants[selectedVariantIndex]) {
+      const v = product.variants[selectedVariantIndex]
+      return [product.imageUrl, ...(v.imageUrls || [])].filter(Boolean)
+    }
+    return [product.imageUrl, ...(product.imageUrls || [])].filter(Boolean)
+  }, [product, selectedVariantIndex])
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" onKeyDown={handleKeyDown}>
@@ -66,18 +84,62 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
         </DialogHeader>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Product Image */}
+          {/* Product Images */}
           <div className="space-y-4">
-            {product.imageUrl && (
-              <div className="aspect-square overflow-hidden rounded-lg border">
-                <img
-                  src={product.imageUrl}
-                  alt={product.title}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                />
+            {(galleryImages && galleryImages.length > 1) ? (
+              <div className="relative">
+                <Carousel className="w-full">
+                  <CarouselContent>
+                    {galleryImages.map((url, idx) => (
+                      <CarouselItem key={idx}>
+                        <div className="aspect-square overflow-hidden rounded-lg border">
+                          <img
+                            src={url as string}
+                            alt={`${product.title} ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="-left-4" />
+                  <CarouselNext className="-right-4" />
+                </Carousel>
+              </div>
+            ) : (
+              product.imageUrl && (
+                <div className="aspect-square overflow-hidden rounded-lg border">
+                  <img
+                    src={product.imageUrl}
+                    alt={product.title}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              )
+            )}
+
+            {/* Variant selectors */}
+            {product.variants && product.variants.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {product.variants.map((v, idx) => (
+                  <button
+                    key={v.id}
+                    aria-label={`Select ${v.name}`}
+                    className={`px-3 py-1 rounded-full border text-sm ${selectedVariantIndex === idx ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                    onClick={() => setSelectedVariantIndex(idx)}
+                  >
+                    {v.name || `Option ${idx + 1}`}
+                  </button>
+                ))}
+                <button
+                  className={`px-3 py-1 rounded-full border text-sm ${selectedVariantIndex === null ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                  onClick={() => setSelectedVariantIndex(null)}
+                >
+                  Default
+                </button>
               </div>
             )}
-            
+
             {/* Product Tags */}
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary" className="flex items-center gap-1">

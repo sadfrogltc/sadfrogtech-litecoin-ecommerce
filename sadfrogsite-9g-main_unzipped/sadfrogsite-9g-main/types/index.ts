@@ -5,14 +5,23 @@ export interface Product {
   category: string
   stockStatus: "in-stock" | "out-of-stock"
   imageUrl: string
+  imageUrls?: string[]
   description: string
   price: number // in USD
   stockLimit?: number // Optional: maximum available quantity
   featured?: boolean // Mark as featured for homepage
+  variants?: Array<{
+    id: string
+    name: string // e.g., color name
+    imageUrls: string[]
+    stockLimit?: number
+    stockStatus?: "in-stock" | "out-of-stock"
+  }>
 }
 
 export interface CartItem extends Product {
   quantity: number
+  selectedVariant?: { id: string; name: string }
 }
 
 export interface Order {

@@ -39,7 +39,7 @@ export async function getProducts(
 
   // Start with the base query using a tagged template literal
   let query = sql`
-    SELECT id, title, sku, category, stock_status, image_url, description, price, stock_limit, featured
+    SELECT id, title, sku, category, stock_status, image_url, image_urls, variants, description, price, stock_limit, featured
     FROM products 
     WHERE stock_status != 'deleted'
   `
@@ -65,9 +65,12 @@ export async function getProducts(
   }
 
   // Dynamically add the ORDER BY clause
-  const sort = filters.sort || "title-asc"
+  const sort = filters.sort || "newest"
   let orderByClause
   switch (sort) {
+    case "newest":
+      orderByClause = sql`ORDER BY created_at DESC`
+      break
     case "price-asc":
       orderByClause = sql`ORDER BY price ASC`
       break
@@ -100,6 +103,8 @@ export async function getProducts(
     category: product.category,
     stockStatus: product.stock_status as "in-stock" | "out-of-stock",
     imageUrl: product.image_url,
+    imageUrls: Array.isArray(product.image_urls) ? product.image_urls : undefined,
+    variants: Array.isArray(product.variants) ? product.variants : undefined,
     description: product.description,
     price: Number.parseFloat(product.price),
     stockLimit: product.stock_limit !== null && product.stock_limit !== undefined ? Number(product.stock_limit) : undefined,
@@ -110,7 +115,7 @@ export async function getProducts(
 export async function getProductById(id: string): Promise<Product | undefined> {
   await ensureDbInitialized()
   const products = await sql`
-    SELECT id, title, sku, category, stock_status, image_url, description, price, stock_limit, featured
+    SELECT id, title, sku, category, stock_status, image_url, image_urls, variants, description, price, stock_limit, featured
     FROM products 
     WHERE id = ${id} AND stock_status != 'deleted'
   `
@@ -123,6 +128,8 @@ export async function getProductById(id: string): Promise<Product | undefined> {
     category: product.category,
     stockStatus: product.stock_status as "in-stock" | "out-of-stock",
     imageUrl: product.image_url,
+    imageUrls: Array.isArray(product.image_urls) ? product.image_urls : undefined,
+    variants: Array.isArray(product.variants) ? product.variants : undefined,
     description: product.description,
     price: Number.parseFloat(product.price),
     stockLimit: product.stock_limit !== null && product.stock_limit !== undefined ? Number(product.stock_limit) : undefined,
@@ -151,6 +158,24 @@ export async function saveOrder(order: Order): Promise<void> {
     await sql`
       INSERT INTO order_items (order_id, product_id, title, sku, price, quantity, image_url)
       VALUES (${dbOrderId}, ${item.id}, ${item.title}, ${item.sku}, ${item.price}, ${item.quantity}, ${item.imageUrl})
+    `
+  }
+  // Decrement stock limits if defined
+  for (const item of order.items) {
+    await sql`
+      UPDATE products
+      SET stock_limit = CASE 
+        WHEN stock_limit IS NULL THEN NULL
+        WHEN stock_limit - ${item.quantity} <= 0 THEN 0
+        ELSE stock_limit - ${item.quantity}
+      END,
+      stock_status = CASE 
+        WHEN stock_limit IS NULL THEN stock_status
+        WHEN stock_limit - ${item.quantity} <= 0 THEN 'out-of-stock'
+        ELSE stock_status
+      END,
+      updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${item.id}
     `
   }
 }
@@ -387,9 +412,9 @@ export async function getAllOrders(): Promise<Order[]> {
 export async function createProduct(product: Omit<Product, "id">): Promise<Product> {
   await ensureDbInitialized()
   const result = await sql`
-    INSERT INTO products (title, sku, category, stock_status, image_url, description, price, stock_limit, featured)
-    VALUES (${product.title}, ${product.sku}, ${product.category}, ${product.stockStatus}, ${product.imageUrl}, ${product.description}, ${product.price}, ${product.stockLimit ?? null}, ${product.featured ?? false})
-    RETURNING id, title, sku, category, stock_status, image_url, description, price, stock_limit, featured
+    INSERT INTO products (title, sku, category, stock_status, image_url, image_urls, variants, description, price, stock_limit, featured)
+    VALUES (${product.title}, ${product.sku}, ${product.category}, ${product.stockStatus}, ${product.imageUrl}, ${JSON.stringify(product.imageUrls || [])}, ${JSON.stringify(product.variants || [])}, ${product.description}, ${product.price}, ${product.stockLimit ?? null}, ${product.featured ?? false})
+    RETURNING id, title, sku, category, stock_status, image_url, image_urls, variants, description, price, stock_limit, featured
   `
   const newProduct = result[0]
   return {
@@ -399,6 +424,8 @@ export async function createProduct(product: Omit<Product, "id">): Promise<Produ
     category: newProduct.category,
     stockStatus: newProduct.stock_status as "in-stock" | "out-of-stock",
     imageUrl: newProduct.image_url,
+    imageUrls: Array.isArray(newProduct.image_urls) ? newProduct.image_urls : undefined,
+    variants: Array.isArray(newProduct.variants) ? newProduct.variants : undefined,
     description: newProduct.description,
     price: Number.parseFloat(newProduct.price),
     stockLimit: newProduct.stock_limit !== null && newProduct.stock_limit !== undefined ? Number(newProduct.stock_limit) : undefined,
@@ -418,13 +445,15 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
       category = ${updates.category || existingProduct.category},
       stock_status = ${updates.stockStatus || existingProduct.stockStatus},
       image_url = ${updates.imageUrl !== undefined ? updates.imageUrl : existingProduct.imageUrl},
+      image_urls = ${updates.imageUrls !== undefined ? JSON.stringify(updates.imageUrls) : JSON.stringify(existingProduct.imageUrls || [])}::jsonb,
+      variants = ${updates.variants !== undefined ? JSON.stringify(updates.variants) : JSON.stringify(existingProduct.variants || [])}::jsonb,
       description = ${updates.description || existingProduct.description},
       price = ${updates.price !== undefined ? updates.price : existingProduct.price},
       stock_limit = ${updates.stockLimit !== undefined ? updates.stockLimit : existingProduct.stockLimit ?? null},
       featured = ${updates.featured !== undefined ? updates.featured : existingProduct.featured ?? false},
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ${id}
-    RETURNING id, title, sku, category, stock_status, image_url, description, price, stock_limit, featured
+    RETURNING id, title, sku, category, stock_status, image_url, image_urls, variants, description, price, stock_limit, featured
   `
   if (result.length === 0) return undefined
   const product = result[0]
@@ -435,6 +464,8 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
     category: product.category,
     stockStatus: product.stock_status as "in-stock" | "out-of-stock",
     imageUrl: product.image_url,
+    imageUrls: Array.isArray(product.image_urls) ? product.image_urls : undefined,
+    variants: Array.isArray(product.variants) ? product.variants : undefined,
     description: product.description,
     price: Number.parseFloat(product.price),
     stockLimit: product.stock_limit !== null && product.stock_limit !== undefined ? Number(product.stock_limit) : undefined,

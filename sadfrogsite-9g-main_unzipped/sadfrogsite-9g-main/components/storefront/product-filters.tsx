@@ -14,6 +14,7 @@ interface ProductFiltersProps {
 }
 
 const sortOptions = [
+  { value: "newest", label: "Newest" },
   { value: "title-asc", label: "Alphabetical (A-Z)" },
   { value: "title-desc", label: "Alphabetical (Z-A)" },
   { value: "price-asc", label: "Price: Low to High" },
@@ -94,7 +95,7 @@ export function ProductFilters({ categories }: ProductFiltersProps) {
           <Label htmlFor="sort">Sort by</Label>
           <Select
             onValueChange={(value) => handleFilterChange("sort", value)}
-            defaultValue={searchParams.get("sort") || "title-asc"}
+            defaultValue={searchParams.get("sort") || "newest"}
           >
             <SelectTrigger id="sort">
               <SelectValue placeholder="Sort products" />

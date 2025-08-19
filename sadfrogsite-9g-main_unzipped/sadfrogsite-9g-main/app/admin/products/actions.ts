@@ -14,6 +14,30 @@ const productSchema = z.object({
   category: z.string().min(1, "Category is required"),
   stockStatus: z.enum(["in-stock", "out-of-stock"]),
   imageUrl: z.string().url("Must be a valid URL.").or(z.literal("")).or(z.string().startsWith("/")),
+  imageUrls: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val) return [] as string[]
+      try {
+        const parsed = JSON.parse(val)
+        return Array.isArray(parsed) ? (parsed as string[]) : []
+      } catch {
+        return [] as string[]
+      }
+    }),
+  variants: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val) return [] as Array<{ id: string; name: string; imageUrls: string[] }>
+      try {
+        const parsed = JSON.parse(val)
+        return Array.isArray(parsed) ? (parsed as Array<{ id: string; name: string; imageUrls: string[] }>) : []
+      } catch {
+        return [] as Array<{ id: string; name: string; imageUrls: string[] }>
+      }
+    }),
   stockLimit: z.coerce.number().int().positive("Stock limit must be a positive integer.").optional().or(z.literal("")).transform(val => val === "" ? undefined : val),
   featured: z.union([z.boolean(), z.string()]).transform(val => {
     if (typeof val === "boolean") return val;
