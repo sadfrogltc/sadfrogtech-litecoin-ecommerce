@@ -163,6 +163,14 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
                     <div className="font-medium">{item.title}</div>
                     <div className="text-sm text-muted-foreground">SKU: {item.sku}</div>
                     <div className="text-sm text-muted-foreground">Quantity: {item.quantity}</div>
+                    {item.customerInstructionsAnswer && (
+                      <div className="text-xs mt-2">
+                        <span className="font-medium">Customer Instructions:</span>
+                        <div className="mt-1 whitespace-pre-wrap bg-muted p-2 rounded text-muted-foreground">
+                          {item.customerInstructionsAnswer}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="text-right">
                     <div className="font-medium">${item.price.toFixed(2)} each</div>

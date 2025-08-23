@@ -26,6 +26,13 @@ const productSchema = z.object({
   imageUrl: z.string().url("Must be a valid URL.").or(z.literal("")).or(z.string().startsWith("/")),
   // Accept a JSON string for multiple images in the form layer
   imageUrls: z.string().optional(),
+  customerInstructions: z.string().optional(),
+  requireCustomerInstructions: z.union([z.boolean(), z.string()]).transform(val => {
+    if (typeof val === "boolean") return val;
+    if (val === "true") return true;
+    if (val === "false") return false;
+    return false;
+  }).optional().default(false),
   stockLimit: z.coerce.number().int().positive("Stock limit must be a positive integer.").optional().or(z.literal("")).transform(val => val === "" ? undefined : val),
   featured: z.union([z.boolean(), z.string()]).transform(val => {
     if (typeof val === "boolean") return val;
@@ -67,6 +74,8 @@ export function ProductForm({ product }: ProductFormProps) {
       stockStatus: product?.stockStatus || "in-stock",
       imageUrl: product?.imageUrl || "/placeholder.svg?height=500&width=500",
       imageUrls: product?.imageUrls ? JSON.stringify(product.imageUrls) : "",
+      customerInstructions: product?.customerInstructions || "",
+      requireCustomerInstructions: product?.requireCustomerInstructions ?? false,
       variants: product?.variants ? JSON.stringify(product.variants) : "",
       stockLimit: product?.stockLimit ?? "",
       featured: product?.featured ?? false,
@@ -252,6 +261,34 @@ export function ProductForm({ product }: ProductFormProps) {
                       values={(() => { try { return JSON.parse(field.value || "[]") } catch { return [] } })()}
                       onChange={(urls) => field.onChange(JSON.stringify(urls))}
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Customer Instructions */}
+            <FormField
+              control={form.control}
+              name="customerInstructions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Customer Instructions (shown to buyer)</FormLabel>
+                  <FormControl>
+                    <Textarea rows={4} placeholder="Describe what the customer should provide (e.g., custom text, measurements, etc.)" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="requireCustomerInstructions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Require Customer Instructions</FormLabel>
+                  <FormControl>
+                    <input type="checkbox" checked={field.value as boolean} onChange={e => field.onChange(e.target.checked)} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

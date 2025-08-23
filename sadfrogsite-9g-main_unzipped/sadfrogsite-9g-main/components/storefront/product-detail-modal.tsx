@@ -11,6 +11,7 @@ import { useLtcPrice } from "@/hooks/use-ltc-price"
 import { useCart } from "@/hooks/use-cart"
 import { ShoppingCart, X, Star, Package, Tag, Info } from "lucide-react"
 import { toast } from "sonner"
+import { Textarea } from "@/components/ui/textarea"
 
 interface ProductDetailModalProps {
   product: Product | null
@@ -23,17 +24,25 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
   const { ltcPrice, isLoading } = useLtcPrice()
   const [quantity, setQuantity] = useState(1)
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null)
+  const [customerInstructionsAnswer, setCustomerInstructionsAnswer] = useState("")
 
   if (!product) return null
 
   const handleAddToCart = () => {
+    if (product.requireCustomerInstructions && customerInstructionsAnswer.trim().length === 0) {
+      toast.error("Please provide the required customer instructions before adding to cart.")
+      return
+    }
     // Add the specified quantity to cart
     const selectedVariant = selectedVariantIndex != null && product.variants ? product.variants[selectedVariantIndex] : undefined
+    const variantFirstImage = selectedVariant && selectedVariant.imageUrls && selectedVariant.imageUrls.length > 0
+      ? selectedVariant.imageUrls[0]
+      : undefined
     const productForCart = selectedVariant
-      ? { ...product, title: `${product.title} (${selectedVariant.name})` } // reflect variant in title
-      : product
+      ? { ...product, title: `${product.title} (${selectedVariant.name})`, imageUrl: variantFirstImage || product.imageUrl }
+      : { ...product, imageUrl: product.imageUrl }
     for (let i = 0; i < quantity; i++) {
-      addItem(productForCart)
+      addItem({ ...productForCart, customerInstructionsAnswer: customerInstructionsAnswer.trim() || undefined })
     }
     toast.success(`${quantity} ${quantity === 1 ? 'item' : 'items'} added to cart`)
     onClose()
@@ -53,6 +62,7 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
   const isOutOfStock = (variantStockStatus ? variantStockStatus !== 'in-stock' : product.stockStatus !== 'in-stock') || (typeof effectiveStockLimit === 'number' && availableStock <= 0)
   const isLowStock = typeof availableStock === 'number' && availableStock > 0 && availableStock <= 5
   const maxQuantity = typeof availableStock === 'number' ? availableStock : 99
+  const instructionsRequiredAndMissing = product.requireCustomerInstructions && customerInstructionsAnswer.trim().length === 0
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity >= 1 && newQuantity <= maxQuantity) {
@@ -67,11 +77,15 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
   }
 
   const galleryImages = useMemo(() => {
+    const base = [product.imageUrl, ...(product.imageUrls || [])].filter(Boolean)
     if (selectedVariantIndex != null && product.variants && product.variants[selectedVariantIndex]) {
       const v = product.variants[selectedVariantIndex]
-      return [product.imageUrl, ...(v.imageUrls || [])].filter(Boolean)
+      const variantImages = (v.imageUrls || []).filter(Boolean)
+      // Put variant images first; append any remaining base images without duplication
+      const merged = [...variantImages, ...base.filter((u) => !variantImages.includes(u))]
+      return merged
     }
-    return [product.imageUrl, ...(product.imageUrls || [])].filter(Boolean)
+    return base
   }, [product, selectedVariantIndex])
 
   return (
@@ -88,7 +102,8 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
           <div className="space-y-4">
             {(galleryImages && galleryImages.length > 1) ? (
               <div className="relative">
-                <Carousel className="w-full">
+                {/* Force carousel to re-init when image set changes */}
+                <Carousel key={galleryImages.join("|")} className="w-full">
                   <CarouselContent>
                     {galleryImages.map((url, idx) => (
                       <CarouselItem key={idx}>
@@ -262,6 +277,25 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                     </p>
                   </div>
                 )}
+
+                {/* Customer Instructions */}
+                {product.requireCustomerInstructions && (
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Customer Instructions</h4>
+                    {product.customerInstructions && (
+                      <p className="text-sm text-muted-foreground">{product.customerInstructions}</p>
+                    )}
+                    <Textarea
+                      value={customerInstructionsAnswer}
+                      onChange={(e) => setCustomerInstructionsAnswer(e.target.value)}
+                      placeholder="Enter your instructions here..."
+                      rows={4}
+                    />
+                    {instructionsRequiredAndMissing && (
+                      <p className="text-xs text-red-600">This field is required.</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -272,7 +306,7 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                   onClick={handleAddToCart} 
                   className="w-full" 
                   size="lg" 
-                  disabled={isOutOfStock}
+                  disabled={isOutOfStock || instructionsRequiredAndMissing}
                   title={isOutOfStock ? 'Out of Stock' : undefined}
                 >
                   <ShoppingCart className="mr-2 h-4 w-4" />

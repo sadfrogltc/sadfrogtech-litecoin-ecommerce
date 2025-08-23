@@ -71,80 +71,114 @@ const shippingZones: Record<string, string> = {
   "Portugal": "Europe",
 };
 
-// Advanced zone rates, defaulting to 'Standard' tier
-const zoneRates: Record<string, Record<string, { price: number; eta: string; service: string; tracking: boolean }>> = {
+// Carrier metadata (service/ETA/tracking), pricing will be computed from weight
+const carrierMeta: Record<string, { eta: string; service: string; tracking: boolean }> = {
+  USPS: { eta: "Varies by zone", service: "Priority/International", tracking: true },
+  FedEx: { eta: "Faster delivery", service: "Ground/Economy", tracking: true },
+  UPS: { eta: "Faster delivery", service: "Worldwide Express", tracking: true },
+  DHL: { eta: "Fastest delivery", service: "Express Worldwide", tracking: true },
+}
+
+type Carrier = "USPS" | "FedEx" | "UPS" | "DHL"
+
+// Weight-based bands (prices in USD) per zone and carrier
+// Each band price covers shipments up to the specified weight in pounds
+const weightBands: Record<string, Record<Carrier, { uptoLbs: number; price: number }[]>> = {
   "North America": {
-    USPS: { price: 0, eta: "2–4 business days", service: "Priority Mail", tracking: true },
-    FedEx: { price: 8, eta: "1–3 business days", service: "Ground", tracking: true },
-    UPS: { price: 10, eta: "1–4 business days", service: "Ground", tracking: true },
-    DHL: { price: 12, eta: "2–3 business days", service: "Express", tracking: true },
+    USPS: [ { uptoLbs: 0.25, price: 4 }, { uptoLbs: 0.5, price: 6 }, { uptoLbs: 1, price: 8 }, { uptoLbs: 2, price: 10 }, { uptoLbs: 4, price: 14 } ],
+    FedEx: [ { uptoLbs: 0.25, price: 9 }, { uptoLbs: 0.5, price: 11 }, { uptoLbs: 1, price: 13 }, { uptoLbs: 2, price: 16 }, { uptoLbs: 4, price: 22 } ],
+    UPS:   [ { uptoLbs: 0.25, price: 10 }, { uptoLbs: 0.5, price: 12 }, { uptoLbs: 1, price: 14 }, { uptoLbs: 2, price: 18 }, { uptoLbs: 4, price: 24 } ],
+    DHL:   [ { uptoLbs: 0.25, price: 12 }, { uptoLbs: 0.5, price: 14 }, { uptoLbs: 1, price: 18 }, { uptoLbs: 2, price: 24 }, { uptoLbs: 4, price: 32 } ],
   },
   "Europe": {
-    USPS: { price: 30, eta: "5–9 business days", service: "International Priority", tracking: true },
-    FedEx: { price: 40, eta: "3–7 business days", service: "International Economy", tracking: true },
-    UPS: { price: 45, eta: "2–6 business days", service: "Worldwide Express", tracking: true },
-    DHL: { price: 35, eta: "2–5 business days", service: "Express Worldwide", tracking: true },
+    USPS: [ { uptoLbs: 0.25, price: 12 }, { uptoLbs: 0.5, price: 14 }, { uptoLbs: 1, price: 18 }, { uptoLbs: 2, price: 24 }, { uptoLbs: 4, price: 32 } ],
+    FedEx: [ { uptoLbs: 0.25, price: 16 }, { uptoLbs: 0.5, price: 20 }, { uptoLbs: 1, price: 26 }, { uptoLbs: 2, price: 34 }, { uptoLbs: 4, price: 48 } ],
+    UPS:   [ { uptoLbs: 0.25, price: 18 }, { uptoLbs: 0.5, price: 22 }, { uptoLbs: 1, price: 28 }, { uptoLbs: 2, price: 36 }, { uptoLbs: 4, price: 50 } ],
+    DHL:   [ { uptoLbs: 0.25, price: 15 }, { uptoLbs: 0.5, price: 19 }, { uptoLbs: 1, price: 25 }, { uptoLbs: 2, price: 32 }, { uptoLbs: 4, price: 44 } ],
   },
   "Asia-Pacific": {
-    USPS: { price: 35, eta: "6–11 business days", service: "International Priority", tracking: true },
-    FedEx: { price: 45, eta: "4–9 business days", service: "International Economy", tracking: true },
-    UPS: { price: 50, eta: "3–7 business days", service: "Worldwide Express", tracking: true },
-    DHL: { price: 40, eta: "2–6 business days", service: "Express Worldwide", tracking: true },
+    USPS: [ { uptoLbs: 0.25, price: 14 }, { uptoLbs: 0.5, price: 17 }, { uptoLbs: 1, price: 22 }, { uptoLbs: 2, price: 30 }, { uptoLbs: 4, price: 42 } ],
+    FedEx: [ { uptoLbs: 0.25, price: 18 }, { uptoLbs: 0.5, price: 22 }, { uptoLbs: 1, price: 28 }, { uptoLbs: 2, price: 38 }, { uptoLbs: 4, price: 54 } ],
+    UPS:   [ { uptoLbs: 0.25, price: 20 }, { uptoLbs: 0.5, price: 24 }, { uptoLbs: 1, price: 30 }, { uptoLbs: 2, price: 40 }, { uptoLbs: 4, price: 56 } ],
+    DHL:   [ { uptoLbs: 0.25, price: 17 }, { uptoLbs: 0.5, price: 21 }, { uptoLbs: 1, price: 27 }, { uptoLbs: 2, price: 36 }, { uptoLbs: 4, price: 50 } ],
   },
   "South America": {
-    USPS: { price: 40, eta: "7–13 business days", service: "International Priority", tracking: true },
-    FedEx: { price: 50, eta: "5–11 business days", service: "International Economy", tracking: true },
-    UPS: { price: 55, eta: "4–9 business days", service: "Worldwide Express", tracking: true },
-    DHL: { price: 45, eta: "3–8 business days", service: "Express Worldwide", tracking: true },
+    USPS: [ { uptoLbs: 0.25, price: 15 }, { uptoLbs: 0.5, price: 18 }, { uptoLbs: 1, price: 24 }, { uptoLbs: 2, price: 32 }, { uptoLbs: 4, price: 46 } ],
+    FedEx: [ { uptoLbs: 0.25, price: 20 }, { uptoLbs: 0.5, price: 24 }, { uptoLbs: 1, price: 30 }, { uptoLbs: 2, price: 40 }, { uptoLbs: 4, price: 58 } ],
+    UPS:   [ { uptoLbs: 0.25, price: 22 }, { uptoLbs: 0.5, price: 26 }, { uptoLbs: 1, price: 32 }, { uptoLbs: 2, price: 42 }, { uptoLbs: 4, price: 60 } ],
+    DHL:   [ { uptoLbs: 0.25, price: 19 }, { uptoLbs: 0.5, price: 23 }, { uptoLbs: 1, price: 29 }, { uptoLbs: 2, price: 38 }, { uptoLbs: 4, price: 55 } ],
   },
   "Africa": {
-    USPS: { price: 45, eta: "9–18 business days", service: "International Priority", tracking: true },
-    FedEx: { price: 55, eta: "6–14 business days", service: "International Economy", tracking: true },
-    UPS: { price: 60, eta: "5–11 business days", service: "Worldwide Express", tracking: true },
-    DHL: { price: 50, eta: "4–9 business days", service: "Express Worldwide", tracking: true },
+    USPS: [ { uptoLbs: 0.25, price: 16 }, { uptoLbs: 0.5, price: 20 }, { uptoLbs: 1, price: 26 }, { uptoLbs: 2, price: 36 }, { uptoLbs: 4, price: 52 } ],
+    FedEx: [ { uptoLbs: 0.25, price: 22 }, { uptoLbs: 0.5, price: 27 }, { uptoLbs: 1, price: 34 }, { uptoLbs: 2, price: 46 }, { uptoLbs: 4, price: 66 } ],
+    UPS:   [ { uptoLbs: 0.25, price: 24 }, { uptoLbs: 0.5, price: 29 }, { uptoLbs: 1, price: 36 }, { uptoLbs: 2, price: 48 }, { uptoLbs: 4, price: 70 } ],
+    DHL:   [ { uptoLbs: 0.25, price: 21 }, { uptoLbs: 0.5, price: 26 }, { uptoLbs: 1, price: 33 }, { uptoLbs: 2, price: 44 }, { uptoLbs: 4, price: 64 } ],
   },
   "Middle East": {
-    USPS: { price: 40, eta: "7–14 business days", service: "International Priority", tracking: true },
-    FedEx: { price: 50, eta: "5–11 business days", service: "International Economy", tracking: true },
-    UPS: { price: 55, eta: "4–9 business days", service: "Worldwide Express", tracking: true },
-    DHL: { price: 45, eta: "3–8 business days", service: "Express Worldwide", tracking: true },
+    USPS: [ { uptoLbs: 0.25, price: 15 }, { uptoLbs: 0.5, price: 19 }, { uptoLbs: 1, price: 25 }, { uptoLbs: 2, price: 34 }, { uptoLbs: 4, price: 48 } ],
+    FedEx: [ { uptoLbs: 0.25, price: 21 }, { uptoLbs: 0.5, price: 26 }, { uptoLbs: 1, price: 33 }, { uptoLbs: 2, price: 45 }, { uptoLbs: 4, price: 63 } ],
+    UPS:   [ { uptoLbs: 0.25, price: 23 }, { uptoLbs: 0.5, price: 28 }, { uptoLbs: 1, price: 35 }, { uptoLbs: 2, price: 47 }, { uptoLbs: 4, price: 66 } ],
+    DHL:   [ { uptoLbs: 0.25, price: 20 }, { uptoLbs: 0.5, price: 25 }, { uptoLbs: 1, price: 32 }, { uptoLbs: 2, price: 43 }, { uptoLbs: 4, price: 60 } ],
   },
   "Eastern Europe & Central Asia": {
-    USPS: { price: 40, eta: "9–16 business days", service: "International Priority", tracking: true },
-    FedEx: { price: 50, eta: "6–13 business days", service: "International Economy", tracking: true },
-    UPS: { price: 55, eta: "5–10 business days", service: "Worldwide Express", tracking: true },
-    DHL: { price: 45, eta: "4–9 business days", service: "Express Worldwide", tracking: true },
+    USPS: [ { uptoLbs: 0.25, price: 14 }, { uptoLbs: 0.5, price: 18 }, { uptoLbs: 1, price: 24 }, { uptoLbs: 2, price: 34 }, { uptoLbs: 4, price: 50 } ],
+    FedEx: [ { uptoLbs: 0.25, price: 19 }, { uptoLbs: 0.5, price: 24 }, { uptoLbs: 1, price: 31 }, { uptoLbs: 2, price: 44 }, { uptoLbs: 4, price: 64 } ],
+    UPS:   [ { uptoLbs: 0.25, price: 21 }, { uptoLbs: 0.5, price: 26 }, { uptoLbs: 1, price: 33 }, { uptoLbs: 2, price: 46 }, { uptoLbs: 4, price: 66 } ],
+    DHL:   [ { uptoLbs: 0.25, price: 18 }, { uptoLbs: 0.5, price: 23 }, { uptoLbs: 1, price: 30 }, { uptoLbs: 2, price: 42 }, { uptoLbs: 4, price: 62 } ],
   },
   "Rest of World": {
-    USPS: { price: 55, eta: "10–22 business days", service: "International Priority", tracking: true },
-    FedEx: { price: 65, eta: "8–18 business days", service: "International Economy", tracking: true },
-    UPS: { price: 70, eta: "7–16 business days", service: "Worldwide Express", tracking: true },
-    DHL: { price: 60, eta: "6–14 business days", service: "Express Worldwide", tracking: true },
+    USPS: [ { uptoLbs: 0.25, price: 18 }, { uptoLbs: 0.5, price: 22 }, { uptoLbs: 1, price: 28 }, { uptoLbs: 2, price: 40 }, { uptoLbs: 4, price: 58 } ],
+    FedEx: [ { uptoLbs: 0.25, price: 24 }, { uptoLbs: 0.5, price: 30 }, { uptoLbs: 1, price: 38 }, { uptoLbs: 2, price: 54 }, { uptoLbs: 4, price: 78 } ],
+    UPS:   [ { uptoLbs: 0.25, price: 26 }, { uptoLbs: 0.5, price: 32 }, { uptoLbs: 1, price: 40 }, { uptoLbs: 2, price: 56 }, { uptoLbs: 4, price: 80 } ],
+    DHL:   [ { uptoLbs: 0.25, price: 22 }, { uptoLbs: 0.5, price: 28 }, { uptoLbs: 1, price: 36 }, { uptoLbs: 2, price: 50 }, { uptoLbs: 4, price: 72 } ],
   },
-};
+}
 
-// Country-specific overrides for special cases
-const countryOverrides: Record<string, Record<string, { price: number; eta: string; service: string; tracking: boolean }>> = {
-  Nigeria: {
-    USPS: { price: 55, eta: "11–22 business days", service: "International Priority", tracking: false },
-    FedEx: { price: 65, eta: "9–18 business days", service: "International Economy", tracking: true },
-    UPS: { price: 70, eta: "7–14 business days", service: "Worldwide Express", tracking: true },
-    DHL: { price: 60, eta: "6–11 business days", service: "Express Worldwide", tracking: true },
-  },
-  "New Zealand": {
-    USPS: { price: 40, eta: "7–13 business days", service: "International Priority", tracking: true },
-    FedEx: { price: 50, eta: "5–11 business days", service: "International Economy", tracking: true },
-    UPS: { price: 55, eta: "4–9 business days", service: "Worldwide Express", tracking: true },
-    DHL: { price: 45, eta: "3–8 business days", service: "Express Worldwide", tracking: true },
-  },
-};
+// Optional country-specific price adjustments (e.g., surcharges/discounts)
+const countryPriceAdjustments: Record<string, number> = {
+  // e.g., "Nigeria": 1.15, // +15%
+}
 
 function getZone(country: string): string {
   return shippingZones[country] || "Rest of World";
 }
 
-function getCountryRates(country: string): Record<string, { price: number; eta: string; service: string; tracking: boolean }> {
-  return countryOverrides[country] || zoneRates[getZone(country)];
+const LBS_PER_ITEM = 0.25
+
+function computeCartWeightLbs(items: { quantity: number }[]): number {
+  const totalQty = items.reduce((sum, i) => sum + (i.quantity || 0), 0)
+  return Math.max(0, totalQty * LBS_PER_ITEM)
+}
+
+function computePriceFor(zone: string, carrier: Carrier, weightLbs: number, country: string): number {
+  // Free USPS shipping within United States
+  if (zone === "North America" && country === "United States" && carrier === "USPS") return 0
+  const bands = weightBands[zone]?.[carrier] || []
+  for (const band of bands) {
+    if (weightLbs <= band.uptoLbs) return band.price
+  }
+  // If above largest band, add incremental per-lb cost to last band price
+  const last = bands[bands.length - 1]
+  if (last) {
+    const extraLbs = Math.ceil(Math.max(0, weightLbs - last.uptoLbs))
+    const increment = Math.max(2, Math.round(last.price * 0.08)) // ~8% of last band per extra lb, min $2
+    return last.price + increment * extraLbs
+  }
+  // Fallback nominal price
+  return 20
+}
+
+function getCountryRates(country: string, weightLbs: number): Record<string, { price: number; eta: string; service: string; tracking: boolean }> {
+  const zone = getZone(country)
+  const carriers: Carrier[] = ["USPS", "FedEx", "UPS", "DHL"]
+  const adj = countryPriceAdjustments[country] || 1
+  const rates: Record<string, { price: number; eta: string; service: string; tracking: boolean }> = {}
+  for (const c of carriers) {
+    const base = computePriceFor(zone, c, weightLbs, country)
+    const price = Math.max(0, Math.round(base * adj))
+    rates[c] = { price, eta: carrierMeta[c].eta, service: carrierMeta[c].service, tracking: carrierMeta[c].tracking }
+  }
+  return rates
 }
 
 export function OrderSummary({
@@ -244,7 +278,8 @@ export function CheckoutForm() {
   })
 
   const country = form.watch("shippingAddress.country");
-  const countryRates = country ? getCountryRates(country) : {};
+  const cartWeightLbs = useMemo(() => computeCartWeightLbs(items), [items])
+  const countryRates = country ? getCountryRates(country, cartWeightLbs) : {};
   const availableCarriers = Object.keys(countryRates) as ("USPS" | "FedEx" | "UPS" | "DHL")[];
   const shippingCost = country ? (countryRates[shippingMethod]?.price || 0) : 0;
   const grandTotal = useMemo(() => cartTotal + shippingCost, [cartTotal, shippingCost]);

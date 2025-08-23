@@ -10,6 +10,9 @@ export interface Product {
   price: number // in USD
   stockLimit?: number // Optional: maximum available quantity
   featured?: boolean // Mark as featured for homepage
+  // Customer instructions: optional admin-provided prompt shown to the buyer
+  customerInstructions?: string
+  requireCustomerInstructions?: boolean
   variants?: Array<{
     id: string
     name: string // e.g., color name
@@ -22,6 +25,7 @@ export interface Product {
 export interface CartItem extends Product {
   quantity: number
   selectedVariant?: { id: string; name: string }
+  customerInstructionsAnswer?: string
 }
 
 export interface Order {

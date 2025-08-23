@@ -145,6 +145,8 @@ export async function initializeDatabase(wipeData = false) {
     await addTotalLtcColumn()
     await addImageUrlsColumn()
     await addVariantsColumn()
+    await addProductCustomerInstructionsColumns()
+    await addOrderItemCustomerInstructionsColumn()
 
     // Create indexes for better performance
     await sql`CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)`
@@ -278,6 +280,33 @@ export async function addVariantsColumn() {
     console.log("[DB] 'variants' column ensured to exist in 'products' table.")
   } catch (error) {
     console.error("[DB] Error ensuring 'variants' column exists:", error)
+  }
+}
+
+export async function addProductCustomerInstructionsColumns() {
+  try {
+    console.log("[DB] Checking for customer instructions columns in products table...")
+    await sql`
+      ALTER TABLE products
+      ADD COLUMN IF NOT EXISTS customer_instructions TEXT,
+      ADD COLUMN IF NOT EXISTS require_customer_instructions BOOLEAN DEFAULT false
+    `
+    console.log("[DB] 'customer_instructions' and 'require_customer_instructions' ensured on 'products'.")
+  } catch (error) {
+    console.error("[DB] Error ensuring product customer instruction columns:", error)
+  }
+}
+
+export async function addOrderItemCustomerInstructionsColumn() {
+  try {
+    console.log("[DB] Checking for customer_instructions column in order_items table...")
+    await sql`
+      ALTER TABLE order_items
+      ADD COLUMN IF NOT EXISTS customer_instructions TEXT
+    `
+    console.log("[DB] 'customer_instructions' column ensured to exist in 'order_items' table.")
+  } catch (error) {
+    console.error("[DB] Error ensuring 'customer_instructions' on order_items:", error)
   }
 }
 

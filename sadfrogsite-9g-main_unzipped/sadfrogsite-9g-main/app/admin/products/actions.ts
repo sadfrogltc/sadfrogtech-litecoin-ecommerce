@@ -26,6 +26,13 @@ const productSchema = z.object({
         return [] as string[]
       }
     }),
+  customerInstructions: z.string().optional(),
+  requireCustomerInstructions: z.union([z.boolean(), z.string()]).transform(val => {
+    if (typeof val === "boolean") return val;
+    if (val === "true") return true;
+    if (val === "false") return false;
+    return false;
+  }).optional().default(false),
   variants: z
     .string()
     .optional()
